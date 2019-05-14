@@ -7,7 +7,7 @@
     ROOT="${cfg.root}"
     mkdir -p "$ROOT"; chmod g+rx "$ROOT"
     TMP="$(mktemp txt.XXXXXXX)"
-    ID="$(tee "$TMP" | openssl dgst -sha1 -binary | base64 | head -c 27 | tr /+ _-)"
+    ID="$(tee "$TMP" | openssl dgst -sha256 -binary | head -c12 | base64 | tr /+ _-)"
     mv "$TMP" "$ROOT/$ID"; chmod g+r "$ROOT/$ID"
     echo "https://${cfg.host}/$ID"
   '').overrideAttrs (_: {
