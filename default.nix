@@ -6,15 +6,38 @@
     export PATH="${with pkgs; makeBinPath [ coreutils mktemp openssl ]}"
     ROOT="${cfg.root}"
     mkdir -p "$ROOT"; chmod g+rx "$ROOT"
-    TMP="$(mktemp txt.XXXXXXX)"
+    TMP=$(mktemp txt.XXXXXXX)
+    ALIAS=$(printf %s "$2" | tr /+. ---)
     ID="$(tee "$TMP" | openssl dgst -sha256 -binary | head -c12 | base64 | tr /+ _-)"
     mv "$TMP" "$ROOT/$ID"; chmod g+r "$ROOT/$ID"
+    if test "$ALIAS"; then
+      ln -sf -- "$ID" "$ROOT/$ALIAS-$ID"
+      ln -sf -- "$ID" "$ROOT/$ALIAS"
+      echo >&2 "https://${cfg.host}/$ALIAS-$ID"
+      ID=$ALIAS
+    fi
     echo "https://${cfg.host}/$ID"
   '').overrideAttrs (_: {
     passthru = {
       shellPath = "/bin/txt-shell";
     };
   });
+
+  locationPathRegex = "[\\w-]{1,}";
+
+  mkLocation = loc: ''
+    location ~ "^/(?<id>${locationPathRegex})${loc.ext}$" {
+      types { } default_type ${loc.type};
+      try_files /$id =404;
+    }
+  '';
+
+  mkLocations = attrs: let
+    list = map (name: { ext = name; type = attrs."${name}"; }) (builtins.attrNames attrs);
+  in pkgs.lib.concatStrings (map mkLocation (
+    [{ ext = ""; type = "text/plain"; }]
+    ++ (map (l: l // { ext = "\\.${l.ext}"; }) list)
+  ));
 in {
   options.txt = {
     enable = mkEnableOption "txt";
@@ -50,6 +73,20 @@ in {
         Domain name of server.
       '';
     };
+
+    types = mkOption {
+      type = with types; attrsOf str;
+      default = {
+        html = "text/html";
+        bin = "application/octet-stream";
+        png = "image/png";
+        jpg = "image/jpeg";
+        svg = "image/svg+xml";
+      };
+      description = ''
+        Map of extension -> MIME type.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -58,33 +95,9 @@ in {
       virtualHosts."${cfg.host}" = {
         forceSSL = true;
         enableACME = true;
-        #locations."/" = {
-        #  root = cfg.root;
-        #};
-        locations."~ \"^/[\\w-]{27}(\\.[\\w]+)?$\"" = {
+        locations."~ \"^/${locationPathRegex}(\\.[\\w]+)?$\"" = {
           root = cfg.root;
-          extraConfig = ''
-            location ~ "^/(?<id>[\\w-]{27})$" {
-              types { } default_type text/plain;
-              try_files /$id =404;
-            }
-            location ~ "^/(?<id>[\\w-]{27})\\.html$" {
-              types { } default_type text/html;
-              try_files /$id =404;
-            }
-            location ~ "^/(?<id>[\\w-]{27})\\.bin$" {
-              types { } default_type application/octet-stream;
-              try_files /$id =404;
-            }
-            location ~ "^/(?<id>[\\w-]{27})\\.png$" {
-              types { } default_type image/png;
-              try_files /$id =404;
-            }
-            location ~ "^/(?<id>[\\w-]{27})\\.jpg$" {
-              types { } default_type image/jpeg;
-              try_files /$id =404;
-            }
-          '';
+          extraConfig = mkLocations cfg.types;
         };
       };
     };
