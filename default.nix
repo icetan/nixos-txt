@@ -82,6 +82,7 @@ in {
         png = "image/png";
         jpg = "image/jpeg";
         svg = "image/svg+xml";
+        txt = "text/plain";
       };
       description = ''
         Map of extension -> MIME type.
