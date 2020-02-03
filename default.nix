@@ -106,20 +106,18 @@ in {
     users.users.nginx.extraGroups = [ cfg.user ];
     users.users."${cfg.user}".openssh.authorizedKeys.keys = cfg.sshKeys;
 
-    users.extraUsers = [
-      {
-        name = cfg.user;
-        group = cfg.user;
-        #uid = config.ids.uids."${cfg.user}";
-        home = cfg.root;
-        createHome = true;
-        shell = txt-shell;
-        isSystemUser = true;
-      }
-    ];
+    users.extraUsers."${cfg.user}" = {
+      name = cfg.user;
+      group = cfg.user;
+      #uid = config.ids.uids."${cfg.user}";
+      home = cfg.root;
+      createHome = true;
+      shell = txt-shell;
+      isSystemUser = true;
+    };
 
-    users.extraGroups = [
-      { name = "${cfg.user}"; }
-    ];
+    users.extraGroups."${cfg.user}" = {
+      name = "${cfg.user}";
+    };
   };
 }
