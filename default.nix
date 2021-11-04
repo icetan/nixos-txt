@@ -5,11 +5,11 @@
     set -e
     export PATH="${with pkgs; makeBinPath [ coreutils mktemp openssl ]}"
     ROOT="${cfg.root}"
-    mkdir -p "$ROOT"; chmod g+rx "$ROOT"
     TMP=$(mktemp txt.XXXXXXX)
     ALIAS=$(printf %s "$2" | tr /+. ---)
     ID="$(tee "$TMP" | openssl dgst -sha256 -binary | head -c12 | base64 | tr /+ _-)"
-    mv "$TMP" "$ROOT/$ID"; chmod g+r "$ROOT/$ID"
+    mv "$TMP" "$ROOT/$ID"
+    chmod 640 "$ROOT/$ID"
     if test "$ALIAS"; then
       ln -sf -- "$ID" "$ROOT/$ALIAS-$ID"
       ln -sf -- "$ID" "$ROOT/$ALIAS"
@@ -110,8 +110,8 @@ in {
       name = cfg.user;
       group = cfg.user;
       #uid = config.ids.uids."${cfg.user}";
-      home = cfg.root;
-      createHome = true;
+      #home = cfg.root;
+      createHome = false;
       shell = txt-shell;
       isSystemUser = true;
     };
@@ -119,5 +119,11 @@ in {
     users.extraGroups."${cfg.user}" = {
       name = "${cfg.user}";
     };
+
+    system.activationScripts.txt-make-root-dir =  ''
+      mkdir -p "${cfg.root}"
+      chown "${cfg.user}:${cfg.user}" "${cfg.root}"
+      chmod 750 "${cfg.root}"
+    '';
   };
 }
