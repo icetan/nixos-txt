@@ -5,10 +5,10 @@
     set -e
     export PATH="${with pkgs; makeBinPath [ coreutils mktemp openssl ]}"
     ROOT="${cfg.root}"
-    TMP=$(mktemp txt.XXXXXXX)
+    TMP_FILE=$(mktemp "${cfg.tempdir}/txt.XXXXXXX")
     ALIAS=$(printf %s "$2" | tr /+. ---)
-    ID="$(tee "$TMP" | openssl dgst -sha256 -binary | head -c12 | base64 | tr /+ _-)"
-    mv "$TMP" "$ROOT/$ID"
+    ID="$(tee "$TMP_FILE" | openssl dgst -sha256 -binary | head -c12 | base64 | tr /+ _-)"
+    mv "$TMP_FILE" "$ROOT/$ID"
     chmod 640 "$ROOT/$ID"
     if test "$ALIAS"; then
       ln -sf -- "$ID" "$ROOT/$ALIAS-$ID"
@@ -60,9 +60,17 @@ in {
 
     root = mkOption {
       type = types.path;
-      default = "/var/lib/txt";
+      default = "/var/lib/txt/www";
       description = ''
         Where to put all those txt.
+      '';
+    };
+
+    tempdir = mkOption {
+      type = types.path;
+      default = "/var/lib/txt/tmp";
+      description = ''
+        Where to put temp files.
       '';
     };
 
@@ -124,6 +132,10 @@ in {
       mkdir -p "${cfg.root}"
       chown "${cfg.user}:${cfg.user}" "${cfg.root}"
       chmod 750 "${cfg.root}"
+
+      mkdir -p "${cfg.tempdir}"
+      chown "${cfg.user}:${cfg.user}" "${cfg.tempdir}"
+      chmod 750 "${cfg.tempdir}"
     '';
   };
 }
