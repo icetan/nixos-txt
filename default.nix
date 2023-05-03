@@ -86,6 +86,7 @@ in {
       type = with types; attrsOf str;
       default = {
         html = "text/html";
+        xml = "text/xml";
         bin = "application/octet-stream";
         png = "image/png";
         jpg = "image/jpeg";
